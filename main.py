@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 # 페이지 기본 설정 (타이틀, 레이아웃)
@@ -100,7 +101,7 @@ if selected_movie:
 
 
 # -----------------------------------------------------------------------------
-# [구역 2] 누적 관객수 Top 5 영화 비교 분석
+# [구역 2] 일관객 합계 Top 5 영화 관객 추이 비교
 # -----------------------------------------------------------------------------
 st.divider()
 st.header("📌 Section 2. 일관객 합계 Top 5 영화 관객 추이 비교")
@@ -159,10 +160,87 @@ st.info(
 
 
 # -----------------------------------------------------------------------------
-# [구역 3] 추후 새로운 시간 분석 그래프가 추가될 구역 (확장용 레이아웃)
+# [구역 3] 날짜별 박스오피스 10위권 관객수 합계 (영역 그래프)
 # -----------------------------------------------------------------------------
 st.divider()
-st.header("📌 Section 3. (추가 예정 구역)")
-st.caption(
-    "앞으로 이 공간에 요일별/월별 관객 패턴 분석, 개봉 N주차별 관객 하락율 등 새로운 그래프가 추가될 예정입니다."
+st.header("📌 Section 3. 날짜별 Top 10 총 관객수 추이 (전체 시장 규모)")
+
+# 1. 날짜별 10위권 일관객 합계 계산
+daily_sum = (
+    df.groupby("날짜")["일관객"]
+    .sum()
+    .reset_index()
+    .sort_values("날짜")
+)
+
+# 2. 합계가 가장 컸던 날 상위 3일 추출
+top3_days = daily_sum.nlargest(3, "일관객")
+
+# 3. Plotly 영역 그래프(Area Chart) 생성
+fig3 = px.area(
+    daily_sum,
+    x="날짜",
+    y="일관객",
+    title="<b>날짜별 박스오피스 Top 10 일관객 합계 추이</b>",
+    labels={"날짜": "날짜", "일관객": "Top 10 관객 합계 (명)"},
+)
+
+# 영역 그래프 스타일링
+fig3.update_traces(
+    line=dict(color="#2E86C1", width=2),
+    fillcolor="rgba(46, 134, 193, 0.3)",
+    hovertemplate="<b>날짜</b>: %{x|%Y년 %m월 %d일}<br><b>총 관객수</b>: %{y:,}명<extra></extra>",
+)
+
+# 4. 상위 3일 지점에 마커 및 주석(Annotation) 추가
+for i, row in top3_days.iterrows():
+    date_str = row["날짜"].strftime("%Y-%m-%d")
+    cnt_str = f"{int(row['일관객']):,}명"
+
+    # 그래프 위에 강조 표시 마커 추가
+    fig3.add_trace(
+        go.Scatter(
+            x=[row["날짜"]],
+            y=[row["일관객"]],
+            mode="markers",
+            marker=dict(size=10, color="red", symbol="circle"),
+            name="최고 관객일 Top 3",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    # 텍스트 라벨 추가
+    fig3.add_annotation(
+        x=row["날짜"],
+        y=row["일관객"],
+        text=f"<b>{date_str}</b><br>({cnt_str})",
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowwidth=1.5,
+        arrowcolor="red",
+        ax=0,
+        ay=-45,
+        bgcolor="#FFFFFF",
+        bordercolor="red",
+        borderwidth=1,
+        font=dict(size=11, color="black"),
+    )
+
+# 레이아웃 미세 조정
+fig3.update_layout(
+    hovermode="x unified",
+    xaxis=dict(showgrid=True, gridcolor="#f0f0f0"),
+    yaxis=dict(showgrid=True, gridcolor="#f0f0f0", tickformat=","),
+    margin=dict(l=40, r=40, t=80, b=40),
+)
+
+# Streamlit 화면에 그래프 출력
+st.plotly_chart(fig3, use_container_width=True)
+
+# 그래프 해설/인사이트
+st.info(
+    "💡 **이 그래프로 알 수 있는 것:** "
+    "전체 영화 시장의 일별 총 관객 흐름과 성수기/비성수기 주기를 파악할 수 있으며, 1년 중 극장에 가장 많은 관객이 몰렸던 피크데이 Top 3 날짜와 관객 규모를 한눈에 확인할 수 있습니다."
 )

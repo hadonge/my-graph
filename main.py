@@ -244,3 +244,59 @@ st.info(
     "💡 **이 그래프로 알 수 있는 것:** "
     "전체 영화 시장의 일별 총 관객 흐름과 성수기/비성수기 주기를 파악할 수 있으며, 1년 중 극장에 가장 많은 관객이 몰렸던 피크데이 Top 3 날짜와 관객 규모를 한눈에 확인할 수 있습니다."
 )
+
+
+# -----------------------------------------------------------------------------
+# [구역 4] 기간 내 총 관객수 Top 10 영화 (가로 막대그래프)
+# -----------------------------------------------------------------------------
+st.divider()
+st.header("📌 Section 4. 기간 내 총 관객수 Top 10 영화")
+
+# 1. 영화별 총 관객수 및 10위권 진입 일수(데이터 집계 횟수) 계산
+top10_summary = (
+    df.groupby("영화명")
+    .agg(총관객수=("일관객", "sum"), 진입일수=("날짜", "count"))
+    .reset_index()
+    .nlargest(10, "총관객수")
+)
+
+# 2. Plotly 가로 막대그래프 생성을 위해 관객수 오름차순 정렬 (그래프 상단에 1위가 오도록 설정)
+top10_summary = top10_summary.sort_values("총관객수", ascending=True)
+
+# 3. Plotly 가로 막대그래프 생성
+fig4 = px.bar(
+    top10_summary,
+    x="총관객수",
+    y="영화명",
+    orientation="h",
+    title="<b>기간 내 총 관객수 Top 10 영화 순위</b>",
+    labels={
+        "총관객수": "총 관객수 (명)",
+        "영화명": "영화 제목",
+        "진입일수": "10위권 진입 일수",
+    },
+    hover_data={"진입일수": True},
+)
+
+# 막대 색상 및 툴팁 서식 지정
+fig4.update_traces(
+    marker_color="#27AE60",
+    hovertemplate="<b>영화명</b>: %{y}<br><b>총 관객수</b>: %{x:,}명<br><b>10위권 진입 일수</b>: %{customdata[0]}일<extra></extra>",
+    customdata=top10_summary[["진입일수"]],
+)
+
+# 레이아웃 조정
+fig4.update_layout(
+    xaxis=dict(showgrid=True, gridcolor="#f0f0f0", tickformat=","),
+    yaxis=dict(showgrid=False),
+    margin=dict(l=40, r=40, t=60, b=40),
+)
+
+# Streamlit 화면에 그래프 출력
+st.plotly_chart(fig4, use_container_width=True)
+
+# 그래프 해설/인사이트
+st.info(
+    "💡 **이 그래프로 알 수 있는 것:** "
+    "해당 기간 전체 박스오피스를 주도한 Top 10 영화의 관객 규모 비교와 함께, 각 영화가 박스오피스 10위권 내에 며칠 동안 상주하며 흥행을 이어갔는지(롱런 여부) 확인할 수 있습니다."
+)
